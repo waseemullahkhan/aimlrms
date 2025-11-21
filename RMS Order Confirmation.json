@@ -1,0 +1,152 @@
+{
+  "name": "RMS Order Confirmation",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "orders",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "e9a351f6-6271-4898-a49b-0c9a0405bc2d",
+      "name": "Webhook",
+      "webhookId": "c3e358ad-45c3-42c3-941b-bac97df33638"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.body }} write email body to send customer in html format with nicely format.",
+        "options": {
+          "systemMessage": "You are a Restaurant Management System to place orders and reserve a table"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3,
+      "position": [
+        288,
+        0
+      ],
+      "id": "954fc1d6-966b-4448-bcd4-9206918c6c40",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        176,
+        224
+      ],
+      "id": "098990ae-c39d-420a-9fa8-65524ded9a77",
+      "name": "Google Gemini Chat Model1",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "ngiaXb7tVSi3ZLZk",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "={{ $json.headers['x-real-ip'] }}"
+      },
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.3,
+      "position": [
+        320,
+        192
+      ],
+      "id": "d3db1b9a-139b-47e1-93c4-cc4948c66b68",
+      "name": "Simple Memory"
+    },
+    {
+      "parameters": {
+        "sendTo": "waseemullahkhan.pki@gmail.com",
+        "subject": "=Your Order has been placed successfully",
+        "message": "={{ $json.output }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        640,
+        0
+      ],
+      "id": "5c2f2f17-257b-4005-b4f6-f80d1fb4fff1",
+      "name": "Send a message",
+      "webhookId": "0c1ec4ab-c2ed-4bbd-a4cd-04aac0719864",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "Wv4nknFt2C2jodfs",
+          "name": "Gmail account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model1": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Simple Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Send a message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "422e17f7-39d9-48dc-b485-cde394e5baba",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "12f6fb5909ec7c124933901b4fe46629912003202e54efbfee30e6bc67722af3"
+  },
+  "id": "Fdu1HAOxjXTDVcIj",
+  "tags": []
+}

@@ -1,0 +1,288 @@
+{
+  "name": "Restaurant Management System",
+  "nodes": [
+    {
+      "parameters": {
+        "public": true,
+        "mode": "webhook",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chatTrigger",
+      "typeVersion": 1.4,
+      "position": [
+        -1264,
+        128
+      ],
+      "id": "1661414b-a7e5-48eb-a078-96ddc68dfc95",
+      "name": "When chat message received",
+      "webhookId": "a9250120-d8de-424b-8c15-3d5e0b5327da",
+      "alwaysOutputData": false
+    },
+    {
+      "parameters": {
+        "options": {
+          "systemMessage": "You are a professional restaurant assistant.\n\n**STRICT RULE:** You must NOT ask for confirmation on the quantity of items or the exact content of an order. If the user mentions an item, assume the quantity and proceed.\n\nYour primary goal is to gather all necessary information from the user to complete either an order placement or a room/table reservation.\n\n**During conversation:** Reply politely and professionally to user messages, and ask clarifying questions (but NOT about confirmation or quantity) to gather all required data.\n\n**When enough info is gathered:** You MUST stop conversing and output ONLY a single JSON object. DO NOT include any text, markdown explanation, or conversational phrases before or after the JSON object.\n\nThe output JSON MUST strictly follow this high-level structure: `{\"type\": \"order\" | \"reservation\", \"details\": {...}}`\n\nThe 'details' object must adhere to the **EXACT** variable names defined below for the detected 'type'.\n\n---\n\n## Tool Definitions and Required Variables\n\n### 1. Type: reservation\nUse this for table or room bookings.\n\n**Required Fields for details (reservation) - MUST USE THESE EXACT KEYS:**\n* **guest_name** (string): The full name of the guest.\n* **guest_email** (string): The guest's email address.\n* **guest_phone** (string): The guest's phone number.\n* **party_size** (integer): The number of people in the party/group.\n* **reservation_date** (string): The date and time of the reservation (e.g., '2025-12-01 19:30').\n* **special_requests** (string): Any additional requests (e.g., 'window table', 'room type').\nrequired attribute for order \nitemName\n**Example Output for reservation:**\n```json\n{\n  \"type\": \"reservation\",\n  \"details\": {\n    \"guest_name\": \"Jane Doe\",\n    \"guest_email\": \"jane@example.com\",\n    \"guest_phone\": \"555-0101\",\n    \"party_size\": 4,\n    \"reservation_date\": \"Tomorrow at 7pm\",\n    \"special_requests\": \"Window seat preferred\"\n  }\n}\n\n"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3,
+      "position": [
+        -1040,
+        128
+      ],
+      "id": "f5ad5275-3e3f-4a7e-9b66-157a115ea42e",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        -1040,
+        352
+      ],
+      "id": "d26b0397-6fd5-4030-955c-9da94a90303a",
+      "name": "Google Gemini Chat Model",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "ngiaXb7tVSi3ZLZk",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.3,
+      "position": [
+        -912,
+        352
+      ],
+      "id": "a248fbd8-c096-4f31-8516-cf186ddeec6c",
+      "name": "Simple Memory"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.parsedData.type }}",
+                    "rightValue": "order",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "04368a41-9863-4ccc-9475-7c90d13cf24d"
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "3566bb73-1f3e-45e2-bcf2-5b9d44ac3bbe",
+                    "leftValue": "={{ $json.parsedData.type }}",
+                    "rightValue": "reservation",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.3,
+      "position": [
+        -464,
+        128
+      ],
+      "id": "034bf9c5-175f-4940-96f5-77fb6c2d7e27",
+      "name": "Switch"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://taqusepglggfbvzhdoik.supabase.co/functions/v1/create-order",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"customer_name\": \"{{ $json.parsedData.details.customer_name }}\",\n  \"customer_email\": \"{{ $json.parsedData.details.customer_email }}\",\n  \"customer_phone\": \"{{ $json.parsedData.details.customer_phone }}\",\n  \"table_number\": \"{{ $json.parsedData.details.delivery_location }}\",\n  \"special_instructions\": \"Clean table\",\n  \"items\": [\"{{ $json.parsedData.details.item_name }}\"]\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        -256,
+        48
+      ],
+      "id": "637b44e0-a515-403a-b40f-a87825fbab3a",
+      "name": "HTTP Request"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://taqusepglggfbvzhdoik.supabase.co/functions/v1/create-reservation",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "Content-Type: application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"guest_name\": \"{{ $json.parsedData.details.guest_name }}\",\n  \"guest_email\": \"{{ $json.parsedData.details.guest_email }}\",\n  \"guest_phone\": \"{{ $json.parsedData.details.guest_phone }}\",\n  \"reservation_date\": \"{{ $json.parsedData.details.reservation_date }}\",\n  \"party_size\": {{ $json.parsedData.details.party_size }},\n  \"special_requests\": \"{{ $json.parsedData.details.special_requests }}\"\n}",
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        -240,
+        224
+      ],
+      "id": "120aa8e9-d55c-44d7-a82d-c05a8febef67",
+      "name": "HTTP Request1"
+    },
+    {
+      "parameters": {
+        "jsCode": "for (const item of $input.all()) {\n  // 1. Get the raw string output\n  const rawOutput = item.json.output;\n  \n  // 2. Find the starting position of the actual JSON (the first '{')\n  const jsonStartIndex = rawOutput.indexOf('{');\n  \n  // 3. Find the end position of the actual JSON (the last '}')\n  const jsonEndIndex = rawOutput.lastIndexOf('}');\n  \n  // 4. If both delimiters are found, extract the clean JSON substring\n  if (jsonStartIndex !== -1 && jsonEndIndex !== -1) {\n    // Extract the string starting from '{' and ending at '}' (inclusive)\n    const jsonString = rawOutput.substring(jsonStartIndex, jsonEndIndex + 1);\n\n    try {\n      // 5. Parse the clean JSON string into an object\n      const parsedObject = JSON.parse(jsonString);\n\n      // 6. Add the parsed object back to the item's JSON data\n      item.json.parsedData = parsedObject;\n    } catch (e) {\n      console.error('Failed to parse JSON string:', e);\n      // Optional: Set a flag or default data if parsing fails\n      item.json.parsedData = { type: 'error', reason: 'Parsing failed' }; \n    }\n  } else {\n    // Handle cases where the JSON structure is completely missing\n    item.json.parsedData = { type: 'error', reason: 'JSON delimiters not found' };\n  }\n}\n\nreturn $input.all();"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -688,
+        128
+      ],
+      "id": "d497cfba-fe0b-470a-82f2-8e15f372569f",
+      "name": "Code in JavaScript"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When chat message received": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Simple Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "HTTP Request1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "Switch",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "8d1af295-5037-469b-bfce-0240379f1391",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "12f6fb5909ec7c124933901b4fe46629912003202e54efbfee30e6bc67722af3"
+  },
+  "id": "2Cfhi0T38FSc8uOc",
+  "tags": []
+}

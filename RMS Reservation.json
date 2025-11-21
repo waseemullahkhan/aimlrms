@@ -1,0 +1,151 @@
+{
+  "name": "RMS Reservation",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "reservations",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -176,
+        -16
+      ],
+      "id": "e277fdcd-19ce-4c81-970e-3c9680bede7e",
+      "name": "Webhook",
+      "webhookId": "c3e358ad-45c3-42c3-941b-bac97df33638"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.body }} write email body to send customer in html format with nicely format.\nRestaurant Name:Fine Dining. Remove Restaurant contact information from the email body",
+        "options": {
+          "systemMessage": "You are a Restaurant Management System to place orders and reserve a table"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3,
+      "position": [
+        112,
+        -16
+      ],
+      "id": "a4e8125a-3bab-4155-8391-dc09b20581d8",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        0,
+        208
+      ],
+      "id": "e10a2e78-848a-427a-98d5-18bbd1c0cc86",
+      "name": "Google Gemini Chat Model1",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "ngiaXb7tVSi3ZLZk",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "={{ $json.headers['x-real-ip'] }}"
+      },
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.3,
+      "position": [
+        144,
+        176
+      ],
+      "id": "967c16e2-c1c6-4e6e-9033-44998cd3a209",
+      "name": "Simple Memory"
+    },
+    {
+      "parameters": {
+        "sendTo": "waseemullahkhan.pki@gmail.com",
+        "subject": "=Restaurant Table has been reserved successfully",
+        "message": "={{ $json.output }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        464,
+        -16
+      ],
+      "id": "13e30836-a553-43e5-bff7-6736885a31fd",
+      "name": "Send a message",
+      "webhookId": "0c1ec4ab-c2ed-4bbd-a4cd-04aac0719864",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "Wv4nknFt2C2jodfs",
+          "name": "Gmail account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Send a message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model1": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Simple Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "a1e20dbd-db7a-4584-9d23-94959bd234eb",
+  "meta": {
+    "instanceId": "12f6fb5909ec7c124933901b4fe46629912003202e54efbfee30e6bc67722af3"
+  },
+  "id": "vH6YDW45bIQNBl6z",
+  "tags": []
+}
